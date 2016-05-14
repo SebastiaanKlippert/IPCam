@@ -10,7 +10,7 @@ import (
 
 type config struct {
 	globalconfig
-	cams []camconfig
+	Cams []camconfig
 }
 
 type globalconfig struct {

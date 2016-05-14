@@ -16,10 +16,11 @@ func NewCams(configFile string) (*Cams, error) {
 	cams := new(Cams)
 	cams.Config = cfg.globalconfig
 
-	for _, c := range cfg.cams {
+	for _, c := range cfg.Cams {
 
 		cam := Cam{
-			config: c,
+			cconfig: &c,
+			gconfig: &cfg.globalconfig,
 		}
 
 		cams.Cams = append(cams.Cams, cam)
@@ -46,17 +47,26 @@ func (c *Cams) CamByName(name string) *Cam {
 
 //Cam is a single IP camera
 type Cam struct {
-	config camconfig
+	gconfig *globalconfig
+	cconfig *camconfig
 }
 
 //Name returns the name of this cam
 func (c *Cam) Name() string {
-	return c.config.Name
+	return c.cconfig.Name
 }
 
 //TakeSnapshot takes a single snapshot
 func (c *Cam) TakeSnapshot() (*Snapshot, error) {
-	return nil, nil
+	buf, err := snapshot(c.gconfig, c.cconfig)
+	if err != nil {
+		return nil, err
+	}
+	s := &Snapshot{
+		Buf:      buf,
+		DateTime: time.Now(),
+	}
+	return s, nil
 }
 
 //TakeSnapshots takes one snapshot every interval and saves them in folder
