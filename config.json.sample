@@ -1,0 +1,12 @@
+{	
+	"Timeout": 10,
+	"Cams": [
+				{
+					"Name":"Cam1",
+					"Host":"192.168.1.100",
+					"Port":"8080",
+					"User":"foo",
+					"Pass":"bar"
+				}
+			]
+}
