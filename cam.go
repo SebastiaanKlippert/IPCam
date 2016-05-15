@@ -70,32 +70,52 @@ func (c *Cam) TakeSnapshot() (*Snapshot, error) {
 	return s, nil
 }
 
-//TakeSnapshots takes one snapshot every interval for duration and saves them in folder
-func (c *Cam) TakeSnapshots(interval, duration time.Duration, folder string) error {
+//TakeSnapshots takes one snapshot every interval for duration and adds them to the return channel
+func (c *Cam) TakeSnapshots(interval, duration time.Duration) (chan *Snapshot, error) {
 
 	if duration.Nanoseconds() <= interval.Nanoseconds() {
-		return fmt.Errorf("duration must be longer than interval")
+		return nil, fmt.Errorf("duration must be longer than interval")
 	}
 
-	tick := time.NewTicker(interval)
-	timer := time.NewTimer(duration)
+	ch := make(chan *Snapshot, 100)
 
-	for {
-		select {
-		case <-tick.C:
-			go func() {
-				s, err := c.TakeSnapshot()
-				if err != nil {
-					log.Println(err)
-				}
-				_, err = s.SaveFile(folder, "")
-				if err != nil {
-					log.Println(err)
-				}
-			}()
-		case <-timer.C:
-			tick.Stop()
-			return nil
+	go func() {
+
+		tick := time.NewTicker(interval)
+		end := time.Now().Add(duration)
+
+		for time.Now().Before(end) {
+			select {
+			case <-tick.C:
+				go func() {
+					s, err := c.TakeSnapshot()
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					ch <- s
+				}()
+			}
+		}
+		tick.Stop()
+		close(ch)
+	}()
+
+	return ch, nil
+}
+
+//TakeSnapshots takes one snapshot every interval for duration and saves them in folder, save errors are logged
+func (c *Cam) TakeAndSaveSnapshots(interval, duration time.Duration, folder string) error {
+
+	ch, err := c.TakeSnapshots(interval, duration)
+	if err != nil {
+		return err
+	}
+
+	for snap := range ch {
+		_, err := snap.SaveFile(folder, "")
+		if err != nil {
+			log.Println(err)
 		}
 	}
 

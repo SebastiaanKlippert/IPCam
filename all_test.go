@@ -86,12 +86,12 @@ func TestSnapShotSave(t *testing.T) {
 	t.Logf("Snapshot saved to %s", fname)
 }
 
-func TestSnapShots(t *testing.T) {
+func TestTakeAndSaveSnapshots(t *testing.T) {
 	checkEnd(t, true)
 
 	t.Log("Taking snapshots every 0.5 seconds for 5 seconds")
 
-	err := cam.TakeSnapshots(500*time.Millisecond, 5*time.Second, testPathSnaps)
+	err := cam.TakeAndSaveSnapshots(500*time.Millisecond, 5*time.Second, testPathSnaps)
 	if err != nil {
 		t.Fatal(err)
 	}
