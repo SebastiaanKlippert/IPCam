@@ -1,7 +1,9 @@
 package ipcam
 
 import (
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -9,10 +11,11 @@ import (
 
 const (
 	//TODO
-	testPath      = "C:/github/IPCam/"
-	testConfig    = "config.json"
-	testCamName   = "Woonkamer"
-	testPathSnaps = testPath + "snaps"
+	testPath       = "C:/github/IPCam/"
+	testConfig     = "config.json"
+	testCamName    = "Woonkamer"
+	testPathSnaps  = testPath + "snaps"
+	testStreamHost = "localhost:80"
 )
 
 var (
@@ -94,5 +97,32 @@ func TestTakeAndSaveSnapshots(t *testing.T) {
 	err := cam.TakeAndSaveSnapshots(500*time.Millisecond, 5*time.Second, testPathSnaps)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+//Note this should be the last test to stop ListenAndServe
+func TestStream(t *testing.T) {
+	checkEnd(t, true)
+
+	duration := 30 * time.Second
+
+	fmt.Printf("Exposing HTTP server at %s/stream for %s\n", testStreamHost, duration)
+
+	http.HandleFunc("/stream", streamhandler)
+
+	go http.ListenAndServe(testStreamHost, nil)
+
+	time.Sleep(duration)
+}
+
+func streamhandler(w http.ResponseWriter, r *http.Request) {
+
+	fw := HttpRwToFw(w)
+
+	w.Header().Add("Content-Type", "multipart/x-mixed-replace;boundary=ipcamera")
+	w.Header().Write(w)
+	err := cam.Stream(fw)
+	if err != nil {
+		log.Println(err)
 	}
 }

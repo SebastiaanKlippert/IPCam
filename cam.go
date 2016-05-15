@@ -3,6 +3,7 @@ package ipcam
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -83,11 +84,16 @@ func (c *Cam) TakeSnapshots(interval, duration time.Duration) (chan *Snapshot, e
 
 		tick := time.NewTicker(interval)
 		end := time.Now().Add(duration)
+		wg := new(sync.WaitGroup)
 
 		for time.Now().Before(end) {
 			select {
 			case <-tick.C:
+				wg.Add(1)
 				go func() {
+
+					defer wg.Done()
+
 					s, err := c.TakeSnapshot()
 					if err != nil {
 						log.Println(err)
@@ -97,8 +103,12 @@ func (c *Cam) TakeSnapshots(interval, duration time.Duration) (chan *Snapshot, e
 				}()
 			}
 		}
+
+		//Stop ticker, wait until last snapshot is written and then close channel
 		tick.Stop()
+		wg.Wait()
 		close(ch)
+
 	}()
 
 	return ch, nil
@@ -120,4 +130,10 @@ func (c *Cam) TakeAndSaveSnapshots(interval, duration time.Duration, folder stri
 	}
 
 	return nil
+}
+
+//Stream opens a video stream which is written to w.
+//Data written is a multipart JFIF stream with --ipcamera borders
+func (c *Cam) Stream(w *HttpFlushWriter) error {
+	return stream(w, c.gconfig, c.cconfig)
 }
