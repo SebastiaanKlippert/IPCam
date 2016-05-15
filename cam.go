@@ -2,6 +2,7 @@ package ipcam
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -64,12 +65,39 @@ func (c *Cam) TakeSnapshot() (*Snapshot, error) {
 	}
 	s := &Snapshot{
 		Buf:      buf,
-		DateTime: time.Now(),
+		DateTime: time.Now().Local(),
 	}
 	return s, nil
 }
 
-//TakeSnapshots takes one snapshot every interval and saves them in folder
-func (c *Cam) TakeSnapshots(interval time.Duration, folder string) (*Snapshot, error) {
-	return nil, nil
+//TakeSnapshots takes one snapshot every interval for duration and saves them in folder
+func (c *Cam) TakeSnapshots(interval, duration time.Duration, folder string) error {
+
+	if duration.Nanoseconds() <= interval.Nanoseconds() {
+		return fmt.Errorf("duration must be longer than interval")
+	}
+
+	tick := time.NewTicker(interval)
+	timer := time.NewTimer(duration)
+
+	for {
+		select {
+		case <-tick.C:
+			go func() {
+				s, err := c.TakeSnapshot()
+				if err != nil {
+					log.Println(err)
+				}
+				_, err = s.SaveFile(folder, "")
+				if err != nil {
+					log.Println(err)
+				}
+			}()
+		case <-timer.C:
+			tick.Stop()
+			return nil
+		}
+	}
+
+	return nil
 }

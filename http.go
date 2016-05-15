@@ -2,6 +2,7 @@ package ipcam
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -10,7 +11,8 @@ import (
 func snapshot(globalcfg *globalconfig, camcfg *camconfig) ([]byte, error) {
 
 	client := http.Client{
-		Timeout: time.Duration(globalcfg.Timeout) * time.Second,
+		Timeout:   time.Duration(globalcfg.Timeout) * time.Second,
+		Transport: http.DefaultTransport,
 	}
 
 	uv := make(url.Values)
@@ -24,16 +26,26 @@ func snapshot(globalcfg *globalconfig, camcfg *camconfig) ([]byte, error) {
 		RawQuery: uv.Encode(),
 	}
 
-	fmt.Println(u.String())
-
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(req.Method) //TODO
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-	client.Do(req)
+	//always read body
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Statuscode %d, response:\n%s\n", resp.StatusCode, string(buf))
+	}
+
+	return buf, nil
 }
