@@ -1,6 +1,7 @@
 package ipcam
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -75,7 +76,7 @@ func (c *Cam) TakeSnapshot() (*Snapshot, error) {
 func (c *Cam) TakeSnapshots(interval, duration time.Duration) (chan *Snapshot, error) {
 
 	if duration.Nanoseconds() <= interval.Nanoseconds() {
-		return nil, fmt.Errorf("duration must be longer than interval")
+		return nil, errors.New("duration must be longer than interval")
 	}
 
 	ch := make(chan *Snapshot, 100)
